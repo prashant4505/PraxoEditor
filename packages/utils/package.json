@@ -1,0 +1,29 @@
+{
+  "name": "@praxo/utils",
+  "version": "0.1.0",
+  "description": "Framework-agnostic primitives shared across Praxo Editor packages.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/utils.js",
+  "module": "./dist/utils.esm.js",
+  "types": "./dist/utils.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/utils.d.ts",
+      "import": "./dist/utils.esm.js",
+      "require": "./dist/utils.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1"
+  }
+}

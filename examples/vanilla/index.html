@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Praxo Editor — Vanilla JS Example</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 640px;
+        margin: 3rem auto;
+        color: #1a1a1a;
+      }
+      [data-praxo-editor] {
+        border: 1px solid #d0d0d0;
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        min-height: 120px;
+      }
+      [data-praxo-editor]:empty::before {
+        content: attr(data-praxo-placeholder);
+        color: #888;
+      }
+      #log {
+        margin-top: 1rem;
+        font:
+          12px/1.4 ui-monospace,
+          monospace;
+        color: #555;
+        white-space: pre-wrap;
+      }
+      button {
+        margin-top: 0.75rem;
+        margin-right: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Praxo Editor — Vanilla JS Example</h1>
+    <p>Demonstrates <code>@praxo/core</code> Phase 1: instance lifecycle, commands, and events.</p>
+    <p>
+      <em
+        >Note: this build has no document model or input syncing yet (Phase 2). Typing below is just
+        native <code>contenteditable</code> — use the buttons to drive the editor through its public
+        API.</em
+      >
+    </p>
+
+    <div id="editor" contenteditable="true"></div>
+
+    <button id="run-command">Run "sayHello" command</button>
+    <button id="log-data">Log getData()</button>
+    <button id="destroy">Destroy editor</button>
+
+    <pre id="log"></pre>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

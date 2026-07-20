@@ -1,0 +1,33 @@
+{
+  "name": "@praxo/core",
+  "version": "0.1.0",
+  "description": "Praxo Editor core: editor instance, event bus, command registry, and plugin system.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/editor.js",
+  "module": "./dist/editor.esm.js",
+  "types": "./dist/editor.d.ts",
+  "unpkg": "./dist/editor.min.js",
+  "exports": {
+    ".": {
+      "types": "./dist/editor.d.ts",
+      "import": "./dist/editor.esm.js",
+      "require": "./dist/editor.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@praxo/utils": "^0.1.0"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1"
+  }
+}
