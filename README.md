@@ -62,6 +62,40 @@ See [`examples/vanilla`](examples/vanilla) for a runnable example. Framework-spe
 (React, Vue, Angular, Drupal, Laravel) land alongside the editable area and UI packages in Phase 2,
 once there is real editing behavior worth demonstrating in each.
 
+## Running and testing the examples
+
+```bash
+npm install
+npm run example
+```
+
+`npm run example` builds every package and serves the repo root at `http://localhost:5173/`. Open:
+
+```
+http://localhost:5173/examples/vanilla/
+```
+
+You should see an editor box pre-filled with "Hello from Praxo Editor.", a Bold / Italic / Heading
+toolbar above it, and three buttons below it. To confirm everything works:
+
+- Select some text and click **B**, **I**, or **H2** — the text should bold/italicize/become a
+  heading, and the button should highlight while the selection has that formatting active.
+- Click **Run "sayHello" command** — `sayHello command executed` appears in the log below.
+- Click **Log getData()** — the editor's current HTML is logged, reflecting any formatting applied.
+- Click **Destroy editor** — logs `editor destroyed`; the toolbar and typing stop having any effect
+  afterwards.
+
+Don't open `examples/vanilla/index.html` directly as a `file://` URL — browsers block ES module
+imports from the local filesystem, so the editor will fail to load. If you do, or if you haven't
+run `npm run build` yet, the page shows a red error banner explaining the fix instead of failing
+silently.
+
+See [`examples/vanilla/README.md`](examples/vanilla/README.md) for the manual build+serve steps,
+and [`examples/vanilla/formatting-plugin.js`](examples/vanilla/formatting-plugin.js) for how the
+toolbar is implemented as a plugin — note that it's a documented proof-of-concept built on
+`document.execCommand`, not the real Phase 3 formatting architecture (see
+[Roadmap](#roadmap)).
+
 ## Plugin guide
 
 Everything beyond the core instance is a plugin:
