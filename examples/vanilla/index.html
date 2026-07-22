@@ -54,6 +54,13 @@
       #toolbar button[data-command='italic'] {
         font-style: italic;
       }
+      #toolbar select {
+        height: 2rem;
+        border: 1px solid #d0d0d0;
+        border-radius: 4px;
+        background: #fff;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
@@ -69,9 +76,17 @@
     </p>
 
     <div id="toolbar">
+      <select id="block-format" title="Paragraph style">
+        <option value="p">Paragraph</option>
+        <option value="h1">Heading 1</option>
+        <option value="h2">Heading 2</option>
+        <option value="h3">Heading 3</option>
+        <option value="h4">Heading 4</option>
+        <option value="h5">Heading 5</option>
+        <option value="h6">Heading 6</option>
+      </select>
       <button type="button" data-command="bold" title="Bold"><strong>B</strong></button>
       <button type="button" data-command="italic" title="Italic"><em>I</em></button>
-      <button type="button" data-command="heading" title="Heading">H2</button>
     </div>
 
     <div id="editor" contenteditable="true"></div>

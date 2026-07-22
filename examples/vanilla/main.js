@@ -58,11 +58,33 @@ for (const button of toolbarButtons) {
   });
 }
 
+const blockFormatSelect = document.getElementById('block-format');
+// Unlike the toolbar buttons, we can't preventDefault the select's mousedown
+// (that would stop its native dropdown from opening), so opening it steals
+// focus/selection from the editor. Save the selection right before that
+// happens and restore it on change, so formatBlock still applies to the
+// right place.
+let savedRange = null;
+blockFormatSelect.addEventListener('mousedown', () => {
+  const selection = document.getSelection();
+  savedRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
+});
+blockFormatSelect.addEventListener('change', () => {
+  if (savedRange) {
+    const selection = document.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(savedRange);
+  }
+  editor.execute('formatBlock', blockFormatSelect.value);
+  updateToolbarState();
+});
+
 function updateToolbarState() {
   const active = readActiveFormats();
   for (const button of toolbarButtons) {
     button.classList.toggle('active', Boolean(active[button.dataset.command]));
   }
+  blockFormatSelect.value = active.formatBlock;
 }
 
 document.addEventListener('selectionchange', updateToolbarState);

@@ -22,15 +22,17 @@ function registerExecCommand(editor, name, execCommandName, value) {
   });
 }
 
+// Block-level tags selectable from the toolbar's "Paragraph style" dropdown.
+export const BLOCK_FORMATS = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+
 export const formattingPlugin = {
   name: 'formattingPoc',
   init({ editor }) {
     registerExecCommand(editor, 'bold', 'bold');
     registerExecCommand(editor, 'italic', 'italic');
-    editor.commands.register('heading', {
-      execute: () => {
-        const current = document.queryCommandValue('formatBlock').toLowerCase();
-        document.execCommand('formatBlock', false, current === 'h2' ? 'p' : 'h2');
+    editor.commands.register('formatBlock', {
+      execute: (_context, payload) => {
+        document.execCommand('formatBlock', false, payload);
         editor.events.emit('change', { source: 'user' });
       },
       isEnabled: () => true,
@@ -39,7 +41,7 @@ export const formattingPlugin = {
   destroy({ editor }) {
     editor.commands.unregister('bold');
     editor.commands.unregister('italic');
-    editor.commands.unregister('heading');
+    editor.commands.unregister('formatBlock');
   },
 };
 
@@ -50,9 +52,10 @@ export const formattingPlugin = {
  * "is this currently on") — see `formattingPlugin` above.
  */
 export function readActiveFormats() {
+  const block = document.queryCommandValue('formatBlock').toLowerCase();
   return {
     bold: document.queryCommandState('bold'),
     italic: document.queryCommandState('italic'),
-    heading: document.queryCommandValue('formatBlock').toLowerCase() === 'h2',
+    formatBlock: BLOCK_FORMATS.includes(block) ? block : 'p',
   };
 }
