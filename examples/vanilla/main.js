@@ -89,6 +89,35 @@ function updateToolbarState() {
 
 document.addEventListener('selectionchange', updateToolbarState);
 
+// "Source" view: swaps the editable surface for a plain <textarea> showing
+// the raw HTML (tags and all) behind the current content. Toggling back off
+// writes any edits back into the editor via setData().
+const editorEl = document.getElementById('editor');
+const sourceView = document.getElementById('source-view');
+const sourceToggle = document.getElementById('source-toggle');
+let inSourceMode = false;
+
+sourceToggle.addEventListener('click', () => {
+  inSourceMode = !inSourceMode;
+  sourceToggle.classList.toggle('active', inSourceMode);
+  blockFormatSelect.disabled = inSourceMode;
+  for (const button of toolbarButtons) {
+    button.disabled = inSourceMode;
+  }
+
+  if (inSourceMode) {
+    sourceView.value = editor.getData();
+    editorEl.classList.add('hidden');
+    sourceView.classList.add('visible');
+    sourceView.focus();
+  } else {
+    editor.setData(sourceView.value);
+    sourceView.classList.remove('visible');
+    editorEl.classList.remove('hidden');
+    updateToolbarState();
+  }
+});
+
 editor.events.on('change', ({ source }) => log(`change event (source: ${source})`));
 editor.events.on('pluginLoaded', ({ name }) => log(`plugin loaded: ${name}`));
 
