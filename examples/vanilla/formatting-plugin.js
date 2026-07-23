@@ -30,6 +30,7 @@ export const formattingPlugin = {
   init({ editor }) {
     registerExecCommand(editor, 'bold', 'bold');
     registerExecCommand(editor, 'italic', 'italic');
+    registerExecCommand(editor, 'underline', 'underline');
     editor.commands.register('formatBlock', {
       execute: (_context, payload) => {
         document.execCommand('formatBlock', false, payload);
@@ -41,6 +42,7 @@ export const formattingPlugin = {
   destroy({ editor }) {
     editor.commands.unregister('bold');
     editor.commands.unregister('italic');
+    editor.commands.unregister('underline');
     editor.commands.unregister('formatBlock');
   },
 };
@@ -56,6 +58,7 @@ export function readActiveFormats() {
   return {
     bold: document.queryCommandState('bold'),
     italic: document.queryCommandState('italic'),
+    underline: document.queryCommandState('underline'),
     formatBlock: BLOCK_FORMATS.includes(block) ? block : 'p',
   };
 }
