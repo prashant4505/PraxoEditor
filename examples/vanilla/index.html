@@ -76,9 +76,10 @@
       #toolbar button[data-command='underline'] {
         text-decoration: underline;
       }
-      #toolbar button[data-command='blockquote'] {
-        font-size: 1.1rem;
-        font-family: Georgia, serif;
+      #toolbar button[data-command='blockquote'] svg {
+        width: 1rem;
+        height: 1rem;
+        fill: currentColor;
       }
       #source-toggle {
         width: auto;
@@ -162,7 +163,13 @@
         <button type="button" data-command="bold" title="Bold"><strong>B</strong></button>
         <button type="button" data-command="italic" title="Italic"><em>I</em></button>
         <button type="button" data-command="underline" title="Underline"><u>U</u></button>
-        <button type="button" data-command="blockquote" title="Quote block">&#8221;</button>
+        <button type="button" data-command="blockquote" title="Quote block">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M4.58 15.68h3.1l1.7-3.4V5.6H3.6v6.68h2.65zm9.34 0h3.1l1.7-3.4V5.6h-5.78v6.68h2.65z"
+            />
+          </svg>
+        </button>
         <span class="toolbar-divider"></span>
         <button type="button" id="source-toggle" title="Source">&lt;/&gt;</button>
       </div>
