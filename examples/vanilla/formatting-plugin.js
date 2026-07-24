@@ -38,12 +38,23 @@ export const formattingPlugin = {
       },
       isEnabled: () => true,
     });
+    editor.commands.register('blockquote', {
+      // Toggle: apply blockquote, or revert to a plain paragraph if the
+      // current block is already a blockquote.
+      execute: () => {
+        const isActive = document.queryCommandValue('formatBlock').toLowerCase() === 'blockquote';
+        document.execCommand('formatBlock', false, isActive ? 'p' : 'blockquote');
+        editor.events.emit('change', { source: 'user' });
+      },
+      isEnabled: () => true,
+    });
   },
   destroy({ editor }) {
     editor.commands.unregister('bold');
     editor.commands.unregister('italic');
     editor.commands.unregister('underline');
     editor.commands.unregister('formatBlock');
+    editor.commands.unregister('blockquote');
   },
 };
 
@@ -59,6 +70,7 @@ export function readActiveFormats() {
     bold: document.queryCommandState('bold'),
     italic: document.queryCommandState('italic'),
     underline: document.queryCommandState('underline'),
+    blockquote: block === 'blockquote',
     formatBlock: BLOCK_FORMATS.includes(block) ? block : 'p',
   };
 }
