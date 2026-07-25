@@ -34,7 +34,9 @@ try {
   throw error;
 }
 
-const { formattingPlugin, readActiveFormats } = await import('./formatting-plugin.js');
+const { formattingPlugin, readActiveFormats, closestLink, sanitizeLinkUrl } = await import(
+  './formatting-plugin.js'
+);
 
 const editor = new PraxoEditor({
   element: '#editor',
@@ -53,6 +55,10 @@ for (const button of toolbarButtons) {
   // is pressed — without this, execCommand would have nothing to act on.
   button.addEventListener('mousedown', (event) => event.preventDefault());
   button.addEventListener('click', () => {
+    if (button.dataset.command === 'link') {
+      openLinkPanel();
+      return;
+    }
     editor.execute(button.dataset.command);
     updateToolbarState();
   });
@@ -97,6 +103,94 @@ const sourceView = document.getElementById('source-view');
 const sourceToggle = document.getElementById('source-toggle');
 let inSourceMode = false;
 
+// Link panel: a small CKEditor-style popover (title, "Displayed text" and
+// "Link URL" fields, Insert button) shown in place of the old
+// window.prompt()-based flow, so entering a URL doesn't spawn a blocking
+// native dialog. Opened by the toolbar's "Link" button; closed on Insert,
+// Remove link, outside click, or Escape.
+const linkPanel = document.getElementById('link-panel');
+const linkTextInput = document.getElementById('link-text-input');
+const linkUrlInput = document.getElementById('link-url-input');
+const linkInsertBtn = document.getElementById('link-insert-btn');
+const linkUnlinkBtn = document.getElementById('link-unlink-btn');
+const linkButton = document.querySelector('#toolbar button[data-command="link"]');
+
+// Selection is lost as soon as focus moves into the panel's inputs, so save
+// it on open and restore it right before applying — same technique as
+// `savedRange` above for the block-format select.
+let linkSavedRange = null;
+
+function closeLinkPanel() {
+  linkPanel.hidden = true;
+  linkSavedRange = null;
+}
+
+function openLinkPanel() {
+  const selection = document.getSelection();
+  let range =
+    selection && selection.rangeCount > 0 && editorEl.contains(selection.getRangeAt(0).commonAncestorContainer)
+      ? selection.getRangeAt(0)
+      : null;
+  if (!range) {
+    // No active selection inside the editor (e.g. button clicked without
+    // having typed yet) — place the caret at the end of the content.
+    editorEl.focus();
+    range = document.createRange();
+    range.selectNodeContents(editorEl);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+  linkSavedRange = range.cloneRange();
+
+  const existingLink = closestLink(range.startContainer);
+  linkTextInput.value = existingLink ? existingLink.textContent : selection.toString();
+  linkUrlInput.value = existingLink ? existingLink.getAttribute('href') : '';
+  linkUnlinkBtn.hidden = !existingLink;
+
+  const rect = range.getBoundingClientRect();
+  const anchorRect = rect.width || rect.height ? rect : editorEl.getBoundingClientRect();
+  linkPanel.hidden = false;
+  linkPanel.style.top = `${anchorRect.bottom + 6}px`;
+  linkPanel.style.left = `${anchorRect.left}px`;
+  linkUrlInput.focus();
+}
+
+function restoreLinkSelection() {
+  if (!linkSavedRange) return;
+  const selection = document.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(linkSavedRange);
+}
+
+linkInsertBtn.addEventListener('click', () => {
+  const url = sanitizeLinkUrl(linkUrlInput.value);
+  if (!url) {
+    linkUrlInput.focus();
+    return;
+  }
+  restoreLinkSelection();
+  editor.execute('link', { url, text: linkTextInput.value });
+  closeLinkPanel();
+  updateToolbarState();
+});
+
+linkUnlinkBtn.addEventListener('click', () => {
+  restoreLinkSelection();
+  editor.execute('unlink');
+  closeLinkPanel();
+  updateToolbarState();
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !linkPanel.hidden) closeLinkPanel();
+});
+document.addEventListener('mousedown', (event) => {
+  if (!linkPanel.hidden && !linkPanel.contains(event.target) && event.target !== linkButton) {
+    closeLinkPanel();
+  }
+});
+
 sourceToggle.addEventListener('click', () => {
   inSourceMode = !inSourceMode;
   sourceToggle.classList.toggle('active', inSourceMode);
@@ -104,6 +198,7 @@ sourceToggle.addEventListener('click', () => {
   for (const button of toolbarButtons) {
     button.disabled = inSourceMode;
   }
+  closeLinkPanel();
 
   if (inSourceMode) {
     sourceView.value = editor.getData();
