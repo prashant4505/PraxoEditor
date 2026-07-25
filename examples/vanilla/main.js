@@ -127,10 +127,9 @@ function closeLinkPanel() {
 
 function openLinkPanel() {
   const selection = document.getSelection();
-  let range =
-    selection && selection.rangeCount > 0 && editorEl.contains(selection.getRangeAt(0).commonAncestorContainer)
-      ? selection.getRangeAt(0)
-      : null;
+  const hadEditorSelection =
+    selection && selection.rangeCount > 0 && editorEl.contains(selection.getRangeAt(0).commonAncestorContainer);
+  let range = hadEditorSelection ? selection.getRangeAt(0) : null;
   if (!range) {
     // No active selection inside the editor (e.g. button clicked without
     // having typed yet) — place the caret at the end of the content.
@@ -148,8 +147,13 @@ function openLinkPanel() {
   linkUrlInput.value = existingLink ? existingLink.getAttribute('href') : '';
   linkUnlinkBtn.hidden = !existingLink;
 
-  const rect = range.getBoundingClientRect();
-  const anchorRect = rect.width || rect.height ? rect : editorEl.getBoundingClientRect();
+  // Anchor to the selected text (or the link being edited) when there's one
+  // — otherwise the button was clicked with nothing selected, so anchor to
+  // the toolbar icon itself rather than guessing a spot in the content.
+  const anchorRect =
+    hadEditorSelection && (!selection.isCollapsed || existingLink)
+      ? range.getBoundingClientRect()
+      : linkButton.getBoundingClientRect();
   linkPanel.hidden = false;
   linkPanel.style.top = `${anchorRect.bottom + 6}px`;
   linkPanel.style.left = `${anchorRect.left}px`;
