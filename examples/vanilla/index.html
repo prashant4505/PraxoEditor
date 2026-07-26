@@ -78,6 +78,7 @@
       }
       #toolbar button[data-command='blockquote'] svg,
       #toolbar button[data-command='bulletList'] svg,
+      #toolbar button[data-command='orderedList'] svg,
       #toolbar button[data-command='link'] svg {
         width: 1rem;
         height: 1rem;
@@ -104,7 +105,8 @@
         border-left: 3px solid #d0d0d0;
         color: #555;
       }
-      [data-praxo-editor] ul {
+      [data-praxo-editor] ul,
+      [data-praxo-editor] ol {
         margin: 0.5rem 0;
         padding-left: 1.5rem;
       }
@@ -266,6 +268,13 @@
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path
               d="M4.5 7.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm0 6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm0 6a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM8.5 5v2H20V5H8.5zm0 6v2H20v-2H8.5zm0 6v2H20v-2H8.5z"
+            />
+          </svg>
+        </button>
+        <button type="button" data-command="orderedList" title="Numbered list">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M3.3 6.8V4.9h-.9V4h1.8v2.8h-.9zM2.4 11h1.1l-1.1 1.3v.6h1.8v-.7H3.1l1.1-1.3v-.6H2.4v.7zm.9 4.5H2.4v.8h.9v.3H2.6v.7h.7v.3h-.9v.8h1.8v-2.9zM8.5 5v2H20V5H8.5zm0 6v2H20v-2H8.5zm0 6v2H20v-2H8.5z"
             />
           </svg>
         </button>

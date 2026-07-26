@@ -56,6 +56,7 @@ export const formattingPlugin = {
     registerExecCommand(editor, 'italic', 'italic');
     registerExecCommand(editor, 'underline', 'underline');
     registerExecCommand(editor, 'bulletList', 'insertUnorderedList');
+    registerExecCommand(editor, 'orderedList', 'insertOrderedList');
     editor.commands.register('formatBlock', {
       execute: (_context, payload) => {
         document.execCommand('formatBlock', false, payload);
@@ -124,6 +125,7 @@ export const formattingPlugin = {
     editor.commands.unregister('italic');
     editor.commands.unregister('underline');
     editor.commands.unregister('bulletList');
+    editor.commands.unregister('orderedList');
     editor.commands.unregister('formatBlock');
     editor.commands.unregister('blockquote');
     editor.commands.unregister('link');
@@ -146,6 +148,7 @@ export function readActiveFormats() {
     underline: document.queryCommandState('underline'),
     blockquote: block === 'blockquote',
     bulletList: document.queryCommandState('insertUnorderedList'),
+    orderedList: document.queryCommandState('insertOrderedList'),
     link: Boolean(selection?.anchorNode && closestLink(selection.anchorNode)),
     formatBlock: BLOCK_FORMATS.includes(block) ? block : 'p',
   };
