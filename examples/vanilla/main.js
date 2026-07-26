@@ -103,6 +103,30 @@ const sourceView = document.getElementById('source-view');
 const sourceToggle = document.getElementById('source-toggle');
 let inSourceMode = false;
 
+// By default a contenteditable lets Tab move focus to the next focusable
+// element on the page, same as a plain <input>. That's surprising for a
+// multi-line editing surface, so trap it: inside a list item, Tab/Shift+Tab
+// nest/un-nest the item (standard list-editor behavior); otherwise Tab
+// inserts a literal tab character, matching a normal text field.
+editorEl.addEventListener('keydown', (event) => {
+  if (event.key !== 'Tab') return;
+  event.preventDefault();
+
+  const anchorNode = document.getSelection()?.anchorNode;
+  const anchorEl = anchorNode
+    ? anchorNode.nodeType === Node.ELEMENT_NODE
+      ? anchorNode
+      : anchorNode.parentElement
+    : null;
+
+  if (anchorEl?.closest('li')) {
+    document.execCommand(event.shiftKey ? 'outdent' : 'indent');
+  } else if (!event.shiftKey) {
+    document.execCommand('insertText', false, '\t');
+  }
+  editor.events.emit('change', { source: 'user' });
+});
+
 // Link panel: a small CKEditor-style popover (title, "Displayed text" and
 // "Link URL" fields, Insert button) shown in place of the old
 // window.prompt()-based flow, so entering a URL doesn't spawn a blocking
