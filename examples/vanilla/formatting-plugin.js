@@ -56,6 +56,7 @@ export const formattingPlugin = {
     registerExecCommand(editor, 'italic', 'italic');
     registerExecCommand(editor, 'underline', 'underline');
     registerExecCommand(editor, 'strikethrough', 'strikeThrough');
+    registerExecCommand(editor, 'alignLeft', 'justifyLeft');
     registerExecCommand(editor, 'bulletList', 'insertUnorderedList');
     registerExecCommand(editor, 'orderedList', 'insertOrderedList');
     editor.commands.register('formatBlock', {
@@ -126,6 +127,7 @@ export const formattingPlugin = {
     editor.commands.unregister('italic');
     editor.commands.unregister('underline');
     editor.commands.unregister('strikethrough');
+    editor.commands.unregister('alignLeft');
     editor.commands.unregister('bulletList');
     editor.commands.unregister('orderedList');
     editor.commands.unregister('formatBlock');
@@ -149,6 +151,7 @@ export function readActiveFormats() {
     italic: document.queryCommandState('italic'),
     underline: document.queryCommandState('underline'),
     strikethrough: document.queryCommandState('strikeThrough'),
+    alignLeft: document.queryCommandState('justifyLeft'),
     blockquote: block === 'blockquote',
     bulletList: document.queryCommandState('insertUnorderedList'),
     orderedList: document.queryCommandState('insertOrderedList'),
