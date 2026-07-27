@@ -25,6 +25,49 @@ function registerExecCommand(editor, name, execCommandName, value) {
 // Block-level tags selectable from the toolbar's "Paragraph style" dropdown.
 export const BLOCK_FORMATS = ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
 
+// Block-level tags that alignment is applied to directly (as inline
+// `style.textAlign`), used by the alignLeft toggle below.
+const ALIGNABLE_TAGS = new Set(['P', 'DIV', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE']);
+
+// Walks up from `node` to the nearest enclosing alignable block element.
+function closestBlock(node) {
+  let el = node && (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement);
+  while (el && !ALIGNABLE_TAGS.has(el.tagName)) {
+    el = el.parentElement;
+  }
+  return el;
+}
+
+// Collects every block element that the current selection touches (not just
+// the anchor block), so alignment applies/toggles across a multi-paragraph
+// selection the same way it does for a single caret position.
+function blocksInSelection() {
+  const selection = document.getSelection();
+  if (!selection || selection.rangeCount === 0) return [];
+  const range = selection.getRangeAt(0);
+  const container =
+    range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+      ? range.commonAncestorContainer
+      : range.commonAncestorContainer.parentElement;
+  const root = container?.closest('[contenteditable]');
+  if (!root) return [];
+
+  const blocks = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+    acceptNode: (el) => (ALIGNABLE_TAGS.has(el.tagName) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP),
+  });
+  let node = walker.nextNode();
+  while (node) {
+    if (range.intersectsNode(node)) blocks.push(node);
+    node = walker.nextNode();
+  }
+  if (blocks.length === 0) {
+    const fallback = closestBlock(range.startContainer);
+    if (fallback) blocks.push(fallback);
+  }
+  return blocks;
+}
+
 // Walks up from `node` to the nearest enclosing <a>, if any — used to decide
 // whether the "link" command should edit or create a link, and to drive its
 // toolbar active state.
@@ -56,7 +99,28 @@ export const formattingPlugin = {
     registerExecCommand(editor, 'italic', 'italic');
     registerExecCommand(editor, 'underline', 'underline');
     registerExecCommand(editor, 'strikethrough', 'strikeThrough');
-    registerExecCommand(editor, 'alignLeft', 'justifyLeft');
+    editor.commands.register('alignLeft', {
+      // Toggle: apply explicit left alignment, or strip it back to the
+      // block's default (no inline text-align) if every touched block is
+      // already explicitly left-aligned. `execCommand('justifyLeft')` alone
+      // can't do this — it's already the browser default, so calling it
+      // again is a no-op and the toolbar button would never de-activate.
+      execute: () => {
+        const blocks = blocksInSelection();
+        if (blocks.length === 0) return;
+        const isActive = blocks.every((block) => block.style.textAlign === 'left');
+        for (const block of blocks) {
+          if (isActive) {
+            block.style.removeProperty('text-align');
+            if (!block.getAttribute('style')) block.removeAttribute('style');
+          } else {
+            block.style.textAlign = 'left';
+          }
+        }
+        editor.events.emit('change', { source: 'user' });
+      },
+      isEnabled: () => true,
+    });
     registerExecCommand(editor, 'bulletList', 'insertUnorderedList');
     registerExecCommand(editor, 'orderedList', 'insertOrderedList');
     editor.commands.register('formatBlock', {
@@ -151,7 +215,10 @@ export function readActiveFormats() {
     italic: document.queryCommandState('italic'),
     underline: document.queryCommandState('underline'),
     strikethrough: document.queryCommandState('strikeThrough'),
-    alignLeft: document.queryCommandState('justifyLeft'),
+    alignLeft: (() => {
+      const blocks = blocksInSelection();
+      return blocks.length > 0 && blocks.every((block) => block.style.textAlign === 'left');
+    })(),
     blockquote: block === 'blockquote',
     bulletList: document.queryCommandState('insertUnorderedList'),
     orderedList: document.queryCommandState('insertOrderedList'),
