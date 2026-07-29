@@ -163,6 +163,27 @@ export const formattingPlugin = {
       },
       isEnabled: () => true,
     });
+    editor.commands.register('alignJustify', {
+      // Toggle: apply explicit justify alignment, or strip it back to the
+      // block's default (no inline text-align) if every touched block is
+      // already explicitly justified. Same rationale as `alignLeft`
+      // above — `execCommand('justifyFull')` alone can't toggle off.
+      execute: () => {
+        const blocks = blocksInSelection();
+        if (blocks.length === 0) return;
+        const isActive = blocks.every((block) => block.style.textAlign === 'justify');
+        for (const block of blocks) {
+          if (isActive) {
+            block.style.removeProperty('text-align');
+            if (!block.getAttribute('style')) block.removeAttribute('style');
+          } else {
+            block.style.textAlign = 'justify';
+          }
+        }
+        editor.events.emit('change', { source: 'user' });
+      },
+      isEnabled: () => true,
+    });
     registerExecCommand(editor, 'bulletList', 'insertUnorderedList');
     registerExecCommand(editor, 'orderedList', 'insertOrderedList');
     editor.commands.register('formatBlock', {
@@ -236,6 +257,7 @@ export const formattingPlugin = {
     editor.commands.unregister('alignLeft');
     editor.commands.unregister('alignCenter');
     editor.commands.unregister('alignRight');
+    editor.commands.unregister('alignJustify');
     editor.commands.unregister('bulletList');
     editor.commands.unregister('orderedList');
     editor.commands.unregister('formatBlock');
@@ -270,6 +292,10 @@ export function readActiveFormats() {
     alignRight: (() => {
       const blocks = blocksInSelection();
       return blocks.length > 0 && blocks.every((block) => block.style.textAlign === 'right');
+    })(),
+    alignJustify: (() => {
+      const blocks = blocksInSelection();
+      return blocks.length > 0 && blocks.every((block) => block.style.textAlign === 'justify');
     })(),
     blockquote: block === 'blockquote',
     bulletList: document.queryCommandState('insertUnorderedList'),
