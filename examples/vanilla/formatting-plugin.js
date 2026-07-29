@@ -84,6 +84,65 @@ export function closestLink(node) {
 const SAFE_URL_PATTERN = /^(https?:|mailto:|tel:|\/|#)/i;
 const BARE_DOMAIN_PATTERN = /^[\w-]+(\.[\w-]+)+(\/.*)?$/i;
 
+// Native contenteditable traps the caret inside a <pre>: Enter only ever
+// inserts a <br>, it never breaks out into a new paragraph the way it does
+// for every other block type. Without an escape hatch a code block becomes a
+// dead end — there's no keyboard-only way back to plain text. Convention
+// (Notion, GitHub, etc): pressing Enter again on an already-blank trailing
+// line exits the block. Returns true if it handled the keypress (caller
+// should preventDefault), false to let Enter behave normally.
+export function exitCodeBlockOnDoubleEnter(editor) {
+  const selection = document.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return false;
+  const range = selection.getRangeAt(0);
+  const anchorEl =
+    range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentElement;
+  const pre = anchorEl?.closest('pre');
+  if (!pre) return false;
+
+  // Only exit from the very end of the block — a blank line in the middle of
+  // otherwise-real code is just a blank line.
+  const tail = document.createRange();
+  tail.selectNodeContents(pre);
+  tail.setStart(range.endContainer, range.endOffset);
+  if (tail.toString().length > 0) return false;
+
+  let text = '';
+  for (const node of pre.childNodes) {
+    if (node === range.endContainer) {
+      text += node.textContent.slice(0, range.endOffset);
+      break;
+    }
+    text += node.nodeName === 'BR' ? '\n' : node.textContent;
+  }
+  const lastLine = text.slice(text.lastIndexOf('\n') + 1);
+  if (lastLine !== '' || !text.includes('\n')) return false;
+
+  // The trailing blank line was created by the previous Enter press — drop
+  // it, then continue the document after the code block instead of inside
+  // it. A single Enter at the end of a <pre> actually inserts two <br>s (the
+  // browser adds a filler one so the empty line renders), so strip all of
+  // them, not just one.
+  while (pre.lastChild?.nodeName === 'BR') pre.removeChild(pre.lastChild);
+
+  const paragraph = document.createElement('p');
+  paragraph.appendChild(document.createElement('br'));
+  if (pre.childNodes.length === 0) {
+    pre.replaceWith(paragraph);
+  } else {
+    pre.after(paragraph);
+  }
+
+  const newRange = document.createRange();
+  newRange.setStart(paragraph, 0);
+  newRange.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(newRange);
+
+  editor.events.emit('change', { source: 'user' });
+  return true;
+}
+
 export function sanitizeLinkUrl(rawUrl) {
   const url = (rawUrl || '').trim();
   if (!url) return '';

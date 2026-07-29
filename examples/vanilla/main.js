@@ -34,9 +34,8 @@ try {
   throw error;
 }
 
-const { formattingPlugin, readActiveFormats, closestLink, sanitizeLinkUrl } = await import(
-  './formatting-plugin.js'
-);
+const { formattingPlugin, readActiveFormats, closestLink, sanitizeLinkUrl, exitCodeBlockOnDoubleEnter } =
+  await import('./formatting-plugin.js');
 
 const editor = new PraxoEditor({
   element: '#editor',
@@ -109,6 +108,10 @@ let inSourceMode = false;
 // nest/un-nest the item (standard list-editor behavior); otherwise Tab
 // inserts a literal tab character, matching a normal text field.
 editorEl.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey && exitCodeBlockOnDoubleEnter(editor)) {
+    event.preventDefault();
+    return;
+  }
   if (event.key !== 'Tab') return;
   event.preventDefault();
 
