@@ -86,6 +86,7 @@
       #toolbar button[data-command='alignCenter'] svg,
       #toolbar button[data-command='alignRight'] svg,
       #toolbar button[data-command='alignJustify'] svg,
+      #toolbar button[data-command='codeBlock'] svg,
       #toolbar button[data-command='link'] svg {
         width: 1rem;
         height: 1rem;
@@ -111,6 +112,17 @@
         padding: 0.25rem 0 0.25rem 1rem;
         border-left: 3px solid #d0d0d0;
         color: #555;
+      }
+      [data-praxo-editor] pre {
+        margin: 0.5rem 0;
+        padding: 0.75rem 1rem;
+        background: #f4f4f4;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        overflow-x: auto;
+        font:
+          13px/1.5 ui-monospace,
+          monospace;
       }
       [data-praxo-editor] ul,
       [data-praxo-editor] ol {
@@ -299,6 +311,13 @@
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path
               d="M4.58 15.68h3.1l1.7-3.4V5.6H3.6v6.68h2.65zm9.34 0h3.1l1.7-3.4V5.6h-5.78v6.68h2.65z"
+            />
+          </svg>
+        </button>
+        <button type="button" data-command="codeBlock" title="Code block">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6zm5.2 0L19.2 12l-4.6-4.6L16 6l6 6-6 6z"
             />
           </svg>
         </button>

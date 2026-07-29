@@ -203,6 +203,17 @@ export const formattingPlugin = {
       },
       isEnabled: () => true,
     });
+    editor.commands.register('codeBlock', {
+      // Toggle: apply a <pre> code block, or revert to a plain paragraph if
+      // the current block is already a code block. Same pattern as
+      // `blockquote` above.
+      execute: () => {
+        const isActive = document.queryCommandValue('formatBlock').toLowerCase() === 'pre';
+        document.execCommand('formatBlock', false, isActive ? 'p' : 'pre');
+        editor.events.emit('change', { source: 'user' });
+      },
+      isEnabled: () => true,
+    });
     // Applies { url, text } from the link panel (main.js) to the current
     // selection: updates the enclosing <a> in place if the selection is
     // already inside one, otherwise wraps/replaces the selection in a new
@@ -262,6 +273,7 @@ export const formattingPlugin = {
     editor.commands.unregister('orderedList');
     editor.commands.unregister('formatBlock');
     editor.commands.unregister('blockquote');
+    editor.commands.unregister('codeBlock');
     editor.commands.unregister('link');
     editor.commands.unregister('unlink');
   },
@@ -298,6 +310,7 @@ export function readActiveFormats() {
       return blocks.length > 0 && blocks.every((block) => block.style.textAlign === 'justify');
     })(),
     blockquote: block === 'blockquote',
+    codeBlock: block === 'pre',
     bulletList: document.queryCommandState('insertUnorderedList'),
     orderedList: document.queryCommandState('insertOrderedList'),
     link: Boolean(selection?.anchorNode && closestLink(selection.anchorNode)),
