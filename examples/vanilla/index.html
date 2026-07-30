@@ -87,17 +87,11 @@
       #toolbar button[data-command='alignRight'] svg,
       #toolbar button[data-command='alignJustify'] svg,
       #toolbar button[data-command='codeBlock'] svg,
-      #toolbar button[data-command='link'] svg {
+      #toolbar button[data-command='link'] svg,
+      #source-toggle svg {
         width: 1rem;
         height: 1rem;
         fill: currentColor;
-      }
-      #source-toggle {
-        width: auto;
-        padding: 0 0.4rem;
-        font-family: ui-monospace, monospace;
-        font-size: 0.75rem;
-        letter-spacing: -0.5px;
       }
       [data-praxo-editor] {
         min-height: 200px;
@@ -337,7 +331,13 @@
           </svg>
         </button>
         <span class="toolbar-divider"></span>
-        <button type="button" id="source-toggle" title="Source">&lt;/&gt;</button>
+        <button type="button" id="source-toggle" title="Source">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M9.4 16.6 4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0L19.2 12l-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"
+            />
+          </svg>
+        </button>
       </div>
 
       <div id="editor" contenteditable="true"></div>
