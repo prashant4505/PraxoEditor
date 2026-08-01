@@ -58,6 +58,10 @@ for (const button of toolbarButtons) {
       openLinkPanel();
       return;
     }
+    if (button.dataset.command === 'html') {
+      openHtmlPanel();
+      return;
+    }
     editor.execute(button.dataset.command);
     updateToolbarState();
   });
@@ -153,6 +157,7 @@ function closeLinkPanel() {
 }
 
 function openLinkPanel() {
+  closeHtmlPanel();
   const selection = document.getSelection();
   const hadEditorSelection =
     selection && selection.rangeCount > 0 && editorEl.contains(selection.getRangeAt(0).commonAncestorContainer);
@@ -222,6 +227,80 @@ document.addEventListener('mousedown', (event) => {
   }
 });
 
+// HTML panel: a small popover (textarea + Insert button) for pasting/typing
+// raw markup that gets inserted verbatim at the current selection. Unlike
+// the "Source" toggle below (which swaps the *whole* document for its HTML),
+// this only ever touches the caret position — a scoped escape hatch rather
+// than a full source-editing mode. Opened by the toolbar's "Insert HTML"
+// button; closed on Insert, outside click, or Escape.
+const htmlPanel = document.getElementById('html-panel');
+const htmlInput = document.getElementById('html-input');
+const htmlInsertBtn = document.getElementById('html-insert-btn');
+const htmlButton = document.querySelector('#toolbar button[data-command="html"]');
+
+// Same technique as `linkSavedRange` above: focus moving into the panel's
+// textarea loses the editor selection, so save it on open and restore it
+// right before applying.
+let htmlSavedRange = null;
+
+function closeHtmlPanel() {
+  htmlPanel.hidden = true;
+  htmlSavedRange = null;
+}
+
+function openHtmlPanel() {
+  closeLinkPanel();
+  const selection = document.getSelection();
+  const hadEditorSelection =
+    selection && selection.rangeCount > 0 && editorEl.contains(selection.getRangeAt(0).commonAncestorContainer);
+  let range = hadEditorSelection ? selection.getRangeAt(0) : null;
+  if (!range) {
+    // No active selection inside the editor (e.g. button clicked without
+    // having typed yet) — place the caret at the end of the content.
+    editorEl.focus();
+    range = document.createRange();
+    range.selectNodeContents(editorEl);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+  htmlSavedRange = range.cloneRange();
+
+  htmlInput.value = '';
+  const anchorRect = htmlButton.getBoundingClientRect();
+  htmlPanel.hidden = false;
+  htmlPanel.style.top = `${anchorRect.bottom + 6}px`;
+  htmlPanel.style.left = `${anchorRect.left}px`;
+  htmlInput.focus();
+}
+
+function restoreHtmlSelection() {
+  if (!htmlSavedRange) return;
+  const selection = document.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(htmlSavedRange);
+}
+
+htmlInsertBtn.addEventListener('click', () => {
+  if (!htmlInput.value.trim()) {
+    htmlInput.focus();
+    return;
+  }
+  restoreHtmlSelection();
+  editor.execute('insertHtml', { html: htmlInput.value });
+  closeHtmlPanel();
+  updateToolbarState();
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !htmlPanel.hidden) closeHtmlPanel();
+});
+document.addEventListener('mousedown', (event) => {
+  if (!htmlPanel.hidden && !htmlPanel.contains(event.target) && event.target !== htmlButton) {
+    closeHtmlPanel();
+  }
+});
+
 sourceToggle.addEventListener('click', () => {
   inSourceMode = !inSourceMode;
   sourceToggle.classList.toggle('active', inSourceMode);
@@ -230,6 +309,7 @@ sourceToggle.addEventListener('click', () => {
     button.disabled = inSourceMode;
   }
   closeLinkPanel();
+  closeHtmlPanel();
 
   if (inSourceMode) {
     sourceView.value = editor.getData();

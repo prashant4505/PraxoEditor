@@ -38,6 +38,24 @@ function closestBlock(node) {
   return el;
 }
 
+// Tags that establish their own block-level box. `insertHtml` (below) uses
+// this to decide whether pasted-in content needs to split the current block
+// rather than being spliced into its inline content — inserting e.g. a <p>
+// or <div> directly into the middle of an existing <p> produces invalid
+// nested-block markup that browsers silently reinterpret (and mangle) the
+// next time it's reparsed, e.g. via the Source view round-trip.
+const BLOCK_LEVEL_TAGS = new Set(['P', 'DIV', 'UL', 'OL', 'LI', 'TABLE', 'BLOCKQUOTE', 'PRE', 'HR', ...BLOCK_FORMATS.map((tag) => tag.toUpperCase())]);
+
+// Walks up from `node` to whichever ancestor is a direct child of `root` —
+// i.e. the top-level block currently containing the caret.
+function closestTopLevelBlock(node, root) {
+  let el = node && (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement);
+  while (el && el.parentElement && el.parentElement !== root) {
+    el = el.parentElement;
+  }
+  return el && el.parentElement === root ? el : null;
+}
+
 // Collects every block element that the current selection touches (not just
 // the anchor block), so alignment applies/toggles across a multi-paragraph
 // selection the same way it does for a single caret position.
@@ -318,6 +336,61 @@ export const formattingPlugin = {
       },
       isEnabled: () => true,
     });
+    // Inserts raw markup from the HTML panel (main.js) at the current
+    // selection, replacing whatever's selected. Unlike the "Source" toggle
+    // (which swaps the whole document for its HTML), this only ever touches
+    // the caret position, so it's driven by DOM insertion rather than
+    // execCommand('insertHTML') — same rationale as `link` above.
+    editor.commands.register('insertHtml', {
+      execute: (_context, payload) => {
+        const html = (payload?.html || '').trim();
+        if (!html) return;
+        const selection = document.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
+        const range = selection.getRangeAt(0);
+        range.deleteContents();
+
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        const fragment = template.content;
+        if (!fragment.hasChildNodes()) return;
+        const lastNode = fragment.lastChild;
+
+        const insertsBlock = Array.from(fragment.childNodes).some(
+          (node) => node.nodeType === Node.ELEMENT_NODE && BLOCK_LEVEL_TAGS.has(node.tagName),
+        );
+        const containerEl =
+          range.startContainer.nodeType === Node.ELEMENT_NODE
+            ? range.startContainer
+            : range.startContainer.parentElement;
+        const root = containerEl?.closest('[contenteditable]');
+        const block = root ? closestTopLevelBlock(range.startContainer, root) : null;
+
+        if (insertsBlock && block) {
+          // Split the current block at the caret — the same thing pressing
+          // Enter does — so the inserted block(s) land as siblings instead
+          // of nesting inside it.
+          const tail = block.cloneNode(false);
+          const tailRange = document.createRange();
+          tailRange.setStart(range.startContainer, range.startOffset);
+          tailRange.setEnd(block, block.childNodes.length);
+          tail.appendChild(tailRange.extractContents());
+          if (!tail.hasChildNodes()) tail.appendChild(document.createElement('br'));
+          block.after(tail);
+          block.after(fragment);
+        } else {
+          range.insertNode(fragment);
+        }
+
+        const caretRange = document.createRange();
+        caretRange.setStartAfter(lastNode);
+        caretRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(caretRange);
+        editor.events.emit('change', { source: 'user' });
+      },
+      isEnabled: () => true,
+    });
   },
   destroy({ editor }) {
     editor.commands.unregister('bold');
@@ -335,6 +408,7 @@ export const formattingPlugin = {
     editor.commands.unregister('codeBlock');
     editor.commands.unregister('link');
     editor.commands.unregister('unlink');
+    editor.commands.unregister('insertHtml');
   },
 };
 
