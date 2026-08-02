@@ -59,7 +59,7 @@ for (const button of toolbarButtons) {
       return;
     }
     if (button.dataset.command === 'html') {
-      openHtmlPanel();
+      openHtmlEmbed();
       return;
     }
     editor.execute(button.dataset.command);
@@ -157,7 +157,7 @@ function closeLinkPanel() {
 }
 
 function openLinkPanel() {
-  closeHtmlPanel();
+  removeHtmlEmbed();
   const selection = document.getSelection();
   const hadEditorSelection =
     selection && selection.rangeCount > 0 && editorEl.contains(selection.getRangeAt(0).commonAncestorContainer);
@@ -227,29 +227,46 @@ document.addEventListener('mousedown', (event) => {
   }
 });
 
-// HTML panel: a small popover (textarea + Insert button) for pasting/typing
-// raw markup that gets inserted verbatim at the current selection. Unlike
-// the "Source" toggle below (which swaps the *whole* document for its HTML),
-// this only ever touches the caret position — a scoped escape hatch rather
-// than a full source-editing mode. Opened by the toolbar's "Insert HTML"
-// button; closed on Insert, outside click, or Escape.
-const htmlPanel = document.getElementById('html-panel');
-const htmlInput = document.getElementById('html-input');
-const htmlInsertBtn = document.getElementById('html-insert-btn');
+// HTML embed: an inline, CKEditor-style widget (see images/insert-html.png)
+// dropped directly into the content at the caret, rather than a floating
+// popover. Built on the same `insertHtml` command used elsewhere — once to
+// place an empty placeholder (so it gets the usual block-splitting
+// treatment), and again on confirm to swap that placeholder for the typed
+// markup. Discarded on Cancel, outside click, or Escape.
 const htmlButton = document.querySelector('#toolbar button[data-command="html"]');
+let activeHtmlEmbed = null;
+let htmlEmbedSeq = 0;
 
-// Same technique as `linkSavedRange` above: focus moving into the panel's
-// textarea loses the editor selection, so save it on open and restore it
-// right before applying.
-let htmlSavedRange = null;
-
-function closeHtmlPanel() {
-  htmlPanel.hidden = true;
-  htmlSavedRange = null;
+function removeHtmlEmbed() {
+  if (!activeHtmlEmbed) return;
+  activeHtmlEmbed.remove();
+  activeHtmlEmbed = null;
+  editor.events.emit('change', { source: 'user' });
 }
 
-function openHtmlPanel() {
+function confirmHtmlEmbed(widget) {
+  const textarea = widget.querySelector('.praxo-html-embed-textarea');
+  const html = textarea.value.trim();
+  if (!html) {
+    textarea.focus();
+    return;
+  }
+
+  const range = document.createRange();
+  range.selectNode(widget);
+  const selection = document.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(range);
+  activeHtmlEmbed = null;
+
+  editor.execute('insertHtml', { html });
+  updateToolbarState();
+}
+
+function openHtmlEmbed() {
   closeLinkPanel();
+  removeHtmlEmbed();
+
   const selection = document.getSelection();
   const hadEditorSelection =
     selection && selection.rangeCount > 0 && editorEl.contains(selection.getRangeAt(0).commonAncestorContainer);
@@ -264,40 +281,36 @@ function openHtmlPanel() {
     selection.removeAllRanges();
     selection.addRange(range);
   }
-  htmlSavedRange = range.cloneRange();
 
-  htmlInput.value = '';
-  const anchorRect = htmlButton.getBoundingClientRect();
-  htmlPanel.hidden = false;
-  htmlPanel.style.top = `${anchorRect.bottom + 6}px`;
-  htmlPanel.style.left = `${anchorRect.left}px`;
-  htmlInput.focus();
+  const id = `html-embed-${++htmlEmbedSeq}`;
+  editor.execute('insertHtml', {
+    html: `<div class="praxo-html-embed" id="${id}" contenteditable="false">
+      <span class="praxo-html-embed-label">HTML snippet</span>
+      <textarea class="praxo-html-embed-textarea" placeholder="Paste raw HTML here..."></textarea>
+      <div class="praxo-html-embed-actions">
+        <button type="button" class="praxo-html-embed-confirm" title="Save">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        </button>
+        <button type="button" class="praxo-html-embed-cancel" title="Discard">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18 M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
+        </button>
+      </div>
+    </div>`,
+  });
+
+  const widget = document.getElementById(id);
+  activeHtmlEmbed = widget;
+  widget.querySelector('.praxo-html-embed-confirm').addEventListener('click', () => confirmHtmlEmbed(widget));
+  widget.querySelector('.praxo-html-embed-cancel').addEventListener('click', () => removeHtmlEmbed());
+  widget.querySelector('.praxo-html-embed-textarea').focus();
 }
-
-function restoreHtmlSelection() {
-  if (!htmlSavedRange) return;
-  const selection = document.getSelection();
-  selection.removeAllRanges();
-  selection.addRange(htmlSavedRange);
-}
-
-htmlInsertBtn.addEventListener('click', () => {
-  if (!htmlInput.value.trim()) {
-    htmlInput.focus();
-    return;
-  }
-  restoreHtmlSelection();
-  editor.execute('insertHtml', { html: htmlInput.value });
-  closeHtmlPanel();
-  updateToolbarState();
-});
 
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && !htmlPanel.hidden) closeHtmlPanel();
+  if (event.key === 'Escape' && activeHtmlEmbed) removeHtmlEmbed();
 });
 document.addEventListener('mousedown', (event) => {
-  if (!htmlPanel.hidden && !htmlPanel.contains(event.target) && event.target !== htmlButton) {
-    closeHtmlPanel();
+  if (activeHtmlEmbed && !activeHtmlEmbed.contains(event.target) && event.target !== htmlButton) {
+    removeHtmlEmbed();
   }
 });
 
@@ -309,7 +322,7 @@ sourceToggle.addEventListener('click', () => {
     button.disabled = inSourceMode;
   }
   closeLinkPanel();
-  closeHtmlPanel();
+  removeHtmlEmbed();
 
   if (inSourceMode) {
     sourceView.value = editor.getData();

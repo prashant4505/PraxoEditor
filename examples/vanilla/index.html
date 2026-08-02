@@ -204,57 +204,90 @@
         background: #fbe9e9;
         border-color: #e4b3b3;
       }
-      /* HTML panel: same popover treatment as #link-panel, for pasting raw
-         markup to insert at the caret. */
-      #html-panel {
-        position: fixed;
-        z-index: 20;
-        width: 320px;
-        background: #fff;
-        border: 1px solid #c4c4c4;
+      /* HTML embed widget: an inline, CKEditor-style block dropped directly
+         into the content at the caret (not a floating popover) — see
+         images/insert-html.png. `contenteditable="false"` on the wrapper
+         keeps the surrounding editor from treating its insides as regular
+         editable text; the <textarea> stays interactive regardless. */
+      .praxo-html-embed {
+        position: relative;
+        box-sizing: border-box;
+        margin: 0.75rem 0;
+        padding: 0.85rem 3rem 0.75rem 0.75rem;
+        border: 2px solid #4d90fe;
         border-radius: 4px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-        padding: 0.75rem;
-        font-size: 0.85rem;
+        background: #f7faff;
       }
-      #html-panel[hidden] {
-        display: none;
-      }
-      #html-panel-title {
+      .praxo-html-embed-label {
+        position: absolute;
+        top: -0.6rem;
+        left: 0.6rem;
+        padding: 0.1rem 0.5rem;
+        background: #4d90fe;
+        color: #fff;
+        font-size: 0.65rem;
         font-weight: 600;
-        margin-bottom: 0.5rem;
+        letter-spacing: 0.02em;
+        border-radius: 2px;
       }
-      #html-input {
+      .praxo-html-embed-textarea {
+        display: block;
         box-sizing: border-box;
         width: 100%;
-        height: 90px;
-        padding: 0.35rem 0.5rem;
-        border: 1px solid #c4c4c4;
+        height: 110px;
+        padding: 0.5rem 0.6rem;
+        border: 1px solid #b8d0fb;
         border-radius: 3px;
+        background: #fff;
+        color: #1a1a1a;
         font:
           12px/1.5 ui-monospace,
           monospace;
         resize: vertical;
       }
-      #html-input:focus {
+      .praxo-html-embed-textarea:focus {
         outline: none;
         border-color: #4d90fe;
         box-shadow: 0 0 0 2px rgba(77, 144, 254, 0.2);
       }
-      #html-insert-btn {
-        width: 100%;
-        margin-top: 0.5rem;
-        height: auto;
-        padding: 0.4rem 0.7rem;
-        border-radius: 3px;
-        font-size: 0.8rem;
-        background: #279f4f;
-        border-color: #279f4f;
-        color: #fff;
+      .praxo-html-embed-actions {
+        position: absolute;
+        top: 50%;
+        right: 0.6rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        transform: translateY(-50%);
       }
-      #html-insert-btn:hover {
-        background: #228545;
-        border-color: #228545;
+      .praxo-html-embed-actions button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.6rem;
+        height: 1.6rem;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+      }
+      .praxo-html-embed-actions button svg {
+        width: 1rem;
+        height: 1rem;
+        fill: none;
+      }
+      .praxo-html-embed-confirm {
+        background: #e6f4ea;
+        color: #279f4f;
+      }
+      .praxo-html-embed-confirm:hover {
+        background: #d3ecda;
+      }
+      .praxo-html-embed-cancel {
+        background: #fbe9e9;
+        color: #b00020;
+      }
+      .praxo-html-embed-cancel:hover {
+        background: #f6d7d7;
       }
       #source-view {
         display: none;
@@ -455,12 +488,6 @@
         <button type="button" id="link-insert-btn">Insert</button>
       </div>
       <button type="button" id="link-unlink-btn" hidden>Remove link</button>
-    </div>
-
-    <div id="html-panel" hidden>
-      <div id="html-panel-title">Insert HTML</div>
-      <textarea id="html-input" spellcheck="false" placeholder="&lt;div&gt;Your HTML here&lt;/div&gt;"></textarea>
-      <button type="button" id="html-insert-btn">Insert</button>
     </div>
 
     <button id="run-command">Run "sayHello" command</button>
