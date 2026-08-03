@@ -206,9 +206,15 @@
       }
       /* HTML embed widget: an inline, CKEditor-style block dropped directly
          into the content at the caret (not a floating popover) — see
-         images/insert-html.png. `contenteditable="false"` on the wrapper
-         keeps the surrounding editor from treating its insides as regular
-         editable text; the <textarea> stays interactive regardless. */
+         images/insert-html.png for the edit state. `contenteditable="false"`
+         on the wrapper keeps the surrounding editor from treating its
+         insides as regular editable text; the <textarea> stays interactive
+         regardless.
+         The widget has two states, toggled via the `is-saved` class: the
+         edit state (raw-HTML textarea + confirm/cancel) and the saved state
+         (rendered preview + edit/remove) — see images/html-save.png. Both
+         markup blocks stay in the DOM at all times so switching between them
+         is a plain visibility toggle rather than rebuilding the widget. */
       .praxo-html-embed {
         position: relative;
         box-sizing: border-box;
@@ -217,6 +223,15 @@
         border: 2px solid #4d90fe;
         border-radius: 4px;
         background: #f7faff;
+      }
+      .praxo-html-embed-view {
+        display: none;
+      }
+      .praxo-html-embed.is-saved .praxo-html-embed-edit {
+        display: none;
+      }
+      .praxo-html-embed.is-saved .praxo-html-embed-view {
+        display: block;
       }
       .praxo-html-embed-label {
         position: absolute;
@@ -229,6 +244,10 @@
         font-weight: 600;
         letter-spacing: 0.02em;
         border-radius: 2px;
+      }
+      .praxo-html-embed-preview {
+        min-height: 1.4rem;
+        color: #1a1a1a;
       }
       .praxo-html-embed-textarea {
         display: block;
@@ -287,6 +306,20 @@
         color: #b00020;
       }
       .praxo-html-embed-cancel:hover {
+        background: #f6d7d7;
+      }
+      .praxo-html-embed-edit-btn {
+        background: #e6edfd;
+        color: #3d6fd6;
+      }
+      .praxo-html-embed-edit-btn:hover {
+        background: #d5e0fb;
+      }
+      .praxo-html-embed-remove-btn {
+        background: #fbe9e9;
+        color: #b00020;
+      }
+      .praxo-html-embed-remove-btn:hover {
         background: #f6d7d7;
       }
       #source-view {

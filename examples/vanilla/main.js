@@ -157,7 +157,7 @@ function closeLinkPanel() {
 }
 
 function openLinkPanel() {
-  removeHtmlEmbed();
+  cancelHtmlEmbed();
   const selection = document.getSelection();
   const hadEditorSelection =
     selection && selection.rangeCount > 0 && editorEl.contains(selection.getRangeAt(0).commonAncestorContainer);
@@ -227,20 +227,34 @@ document.addEventListener('mousedown', (event) => {
   }
 });
 
-// HTML embed: an inline, CKEditor-style widget (see images/insert-html.png)
-// dropped directly into the content at the caret, rather than a floating
-// popover. Built on the same `insertHtml` command used elsewhere — once to
-// place an empty placeholder (so it gets the usual block-splitting
-// treatment), and again on confirm to swap that placeholder for the typed
-// markup. Discarded on Cancel, outside click, or Escape.
+// HTML embed: an inline, CKEditor-style widget dropped directly into the
+// content at the caret, rather than a floating popover. Built on the same
+// `insertHtml` command used elsewhere, once, to place the widget itself (so
+// it gets the usual block-splitting treatment) — after that the widget stays
+// put and just toggles between two states via the `is-saved` class:
+//   - edit state (images/insert-html.png): raw-HTML textarea + confirm/cancel
+//   - saved state (images/html-save.png): rendered preview + edit/remove
+// so a confirmed snippet remains a distinct, re-editable box in the content
+// instead of dissolving into plain markup. The raw HTML is kept on
+// `dataset.html` (rather than JS-side state) so it survives a round-trip
+// through the Source view, which serializes/reparses the editor's HTML.
 const htmlButton = document.querySelector('#toolbar button[data-command="html"]');
 let activeHtmlEmbed = null;
+// Cancelling a brand-new, never-confirmed widget should discard it entirely;
+// cancelling an edit of an already-saved widget should just revert to its
+// last-saved preview. This flag distinguishes the two.
+let activeHtmlEmbedIsNew = false;
 let htmlEmbedSeq = 0;
 
-function removeHtmlEmbed() {
+function cancelHtmlEmbed() {
   if (!activeHtmlEmbed) return;
-  activeHtmlEmbed.remove();
+  const widget = activeHtmlEmbed;
   activeHtmlEmbed = null;
+  if (activeHtmlEmbedIsNew) {
+    widget.remove();
+  } else {
+    widget.classList.add('is-saved');
+  }
   editor.events.emit('change', { source: 'user' });
 }
 
@@ -252,20 +266,40 @@ function confirmHtmlEmbed(widget) {
     return;
   }
 
-  const range = document.createRange();
-  range.selectNode(widget);
-  const selection = document.getSelection();
-  selection.removeAllRanges();
-  selection.addRange(range);
+  widget.dataset.html = html;
+  widget.querySelector('.praxo-html-embed-preview').innerHTML = html;
+  widget.classList.add('is-saved');
   activeHtmlEmbed = null;
-
-  editor.execute('insertHtml', { html });
+  editor.events.emit('change', { source: 'user' });
   updateToolbarState();
+}
+
+function editHtmlEmbed(widget) {
+  closeLinkPanel();
+  activeHtmlEmbed = widget;
+  activeHtmlEmbedIsNew = false;
+  widget.classList.remove('is-saved');
+  const textarea = widget.querySelector('.praxo-html-embed-textarea');
+  textarea.value = widget.dataset.html || '';
+  textarea.focus();
+}
+
+function deleteHtmlEmbed(widget) {
+  if (activeHtmlEmbed === widget) activeHtmlEmbed = null;
+  widget.remove();
+  editor.events.emit('change', { source: 'user' });
+}
+
+function wireHtmlEmbed(widget) {
+  widget.querySelector('.praxo-html-embed-confirm').addEventListener('click', () => confirmHtmlEmbed(widget));
+  widget.querySelector('.praxo-html-embed-cancel').addEventListener('click', () => cancelHtmlEmbed());
+  widget.querySelector('.praxo-html-embed-edit-btn').addEventListener('click', () => editHtmlEmbed(widget));
+  widget.querySelector('.praxo-html-embed-remove-btn').addEventListener('click', () => deleteHtmlEmbed(widget));
 }
 
 function openHtmlEmbed() {
   closeLinkPanel();
-  removeHtmlEmbed();
+  cancelHtmlEmbed();
 
   const selection = document.getSelection();
   const hadEditorSelection =
@@ -285,32 +319,46 @@ function openHtmlEmbed() {
   const id = `html-embed-${++htmlEmbedSeq}`;
   editor.execute('insertHtml', {
     html: `<div class="praxo-html-embed" id="${id}" contenteditable="false">
-      <span class="praxo-html-embed-label">HTML snippet</span>
-      <textarea class="praxo-html-embed-textarea" placeholder="Paste raw HTML here..."></textarea>
-      <div class="praxo-html-embed-actions">
-        <button type="button" class="praxo-html-embed-confirm" title="Save">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        </button>
-        <button type="button" class="praxo-html-embed-cancel" title="Discard">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18 M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
-        </button>
+      <div class="praxo-html-embed-edit">
+        <span class="praxo-html-embed-label">HTML snippet</span>
+        <textarea class="praxo-html-embed-textarea" placeholder="Paste raw HTML here..."></textarea>
+        <div class="praxo-html-embed-actions">
+          <button type="button" class="praxo-html-embed-confirm" title="Save">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </button>
+          <button type="button" class="praxo-html-embed-cancel" title="Discard">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18 M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
+          </button>
+        </div>
+      </div>
+      <div class="praxo-html-embed-view">
+        <span class="praxo-html-embed-label">HTML snippet</span>
+        <div class="praxo-html-embed-preview"></div>
+        <div class="praxo-html-embed-actions">
+          <button type="button" class="praxo-html-embed-edit-btn" title="Edit">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.06 6.19 17.81 9.94 M3 21l.4-3.75L14.06 6.5l3.44 3.44L6.75 20.6 3 21Z" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </button>
+          <button type="button" class="praxo-html-embed-remove-btn" title="Remove">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </button>
+        </div>
       </div>
     </div>`,
   });
 
   const widget = document.getElementById(id);
   activeHtmlEmbed = widget;
-  widget.querySelector('.praxo-html-embed-confirm').addEventListener('click', () => confirmHtmlEmbed(widget));
-  widget.querySelector('.praxo-html-embed-cancel').addEventListener('click', () => removeHtmlEmbed());
+  activeHtmlEmbedIsNew = true;
+  wireHtmlEmbed(widget);
   widget.querySelector('.praxo-html-embed-textarea').focus();
 }
 
 document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && activeHtmlEmbed) removeHtmlEmbed();
+  if (event.key === 'Escape' && activeHtmlEmbed) cancelHtmlEmbed();
 });
 document.addEventListener('mousedown', (event) => {
   if (activeHtmlEmbed && !activeHtmlEmbed.contains(event.target) && event.target !== htmlButton) {
-    removeHtmlEmbed();
+    cancelHtmlEmbed();
   }
 });
 
@@ -322,7 +370,7 @@ sourceToggle.addEventListener('click', () => {
     button.disabled = inSourceMode;
   }
   closeLinkPanel();
-  removeHtmlEmbed();
+  cancelHtmlEmbed();
 
   if (inSourceMode) {
     sourceView.value = editor.getData();
