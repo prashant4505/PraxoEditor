@@ -66,6 +66,10 @@ for (const button of toolbarButtons) {
       editor.execute('insertHtml', { html: '<hr>' });
       return;
     }
+    if (button.dataset.command === 'table') {
+      openTablePanel();
+      return;
+    }
     editor.execute(button.dataset.command);
     updateToolbarState();
   });
@@ -162,6 +166,7 @@ function closeLinkPanel() {
 
 function openLinkPanel() {
   cancelHtmlEmbed();
+  closeTablePanel();
   const selection = document.getSelection();
   const hadEditorSelection =
     selection && selection.rangeCount > 0 && editorEl.contains(selection.getRangeAt(0).commonAncestorContainer);
@@ -304,6 +309,7 @@ function wireHtmlEmbed(widget) {
 function openHtmlEmbed() {
   closeLinkPanel();
   cancelHtmlEmbed();
+  closeTablePanel();
 
   const selection = document.getSelection();
   const hadEditorSelection =
@@ -366,6 +372,90 @@ document.addEventListener('mousedown', (event) => {
   }
 });
 
+// Table panel: a small popover (same pattern as the link panel) for picking
+// a row/column count before inserting a new table at the caret. Built on
+// `insertHtml`, so `TABLE` gets the same block-splitting treatment as any
+// other block-level insert (see BLOCK_LEVEL_TAGS in formatting-plugin.js).
+const tablePanel = document.getElementById('table-panel');
+const tableRowsInput = document.getElementById('table-rows-input');
+const tableColsInput = document.getElementById('table-cols-input');
+const tableInsertBtn = document.getElementById('table-insert-btn');
+const tableButton = document.querySelector('#toolbar button[data-command="table"]');
+
+let tableSavedRange = null;
+
+function closeTablePanel() {
+  tablePanel.hidden = true;
+  tableSavedRange = null;
+}
+
+function openTablePanel() {
+  closeLinkPanel();
+  cancelHtmlEmbed();
+
+  const selection = document.getSelection();
+  const hadEditorSelection =
+    selection && selection.rangeCount > 0 && editorEl.contains(selection.getRangeAt(0).commonAncestorContainer);
+  let range = hadEditorSelection ? selection.getRangeAt(0) : null;
+  if (!range) {
+    // No active selection inside the editor (e.g. button clicked without
+    // having typed yet) — place the caret at the end of the content.
+    editorEl.focus();
+    range = document.createRange();
+    range.selectNodeContents(editorEl);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+  tableSavedRange = range.cloneRange();
+
+  const anchorRect = tableButton.getBoundingClientRect();
+  tablePanel.hidden = false;
+  tablePanel.style.top = `${anchorRect.bottom + 6}px`;
+  tablePanel.style.left = `${anchorRect.left}px`;
+  tableRowsInput.focus();
+  tableRowsInput.select();
+}
+
+function restoreTableSelection() {
+  if (!tableSavedRange) return;
+  const selection = document.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(tableSavedRange);
+}
+
+// Clamps to a sane range so a stray huge/zero/negative input can't produce
+// a table with thousands of cells or none at all.
+function clampTableSize(value) {
+  const n = Math.trunc(Number(value));
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(Math.max(n, 1), 20);
+}
+
+function buildTableHtml(rows, cols) {
+  const headerRow = `<tr>${'<th>&nbsp;</th>'.repeat(cols)}</tr>`;
+  const bodyRow = `<tr>${'<td>&nbsp;</td>'.repeat(cols)}</tr>`;
+  return `<table><thead>${headerRow}</thead><tbody>${bodyRow.repeat(rows - 1)}</tbody></table>`;
+}
+
+tableInsertBtn.addEventListener('click', () => {
+  const rows = clampTableSize(tableRowsInput.value);
+  const cols = clampTableSize(tableColsInput.value);
+  restoreTableSelection();
+  editor.execute('insertHtml', { html: buildTableHtml(rows, cols) });
+  closeTablePanel();
+  updateToolbarState();
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !tablePanel.hidden) closeTablePanel();
+});
+document.addEventListener('mousedown', (event) => {
+  if (!tablePanel.hidden && !tablePanel.contains(event.target) && event.target !== tableButton) {
+    closeTablePanel();
+  }
+});
+
 sourceToggle.addEventListener('click', () => {
   inSourceMode = !inSourceMode;
   sourceToggle.classList.toggle('active', inSourceMode);
@@ -375,6 +465,7 @@ sourceToggle.addEventListener('click', () => {
   }
   closeLinkPanel();
   cancelHtmlEmbed();
+  closeTablePanel();
 
   if (inSourceMode) {
     sourceView.value = editor.getData();
