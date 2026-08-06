@@ -62,6 +62,10 @@ for (const button of toolbarButtons) {
       openHtmlEmbed();
       return;
     }
+    if (button.dataset.command === 'hr') {
+      editor.execute('insertHtml', { html: '<hr>' });
+      return;
+    }
     editor.execute(button.dataset.command);
     updateToolbarState();
   });
