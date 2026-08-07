@@ -75,14 +75,25 @@ npm run example
 http://localhost:5173/examples/vanilla/
 ```
 
-You should see an editor box pre-filled with "Hello from Praxo Editor.", a paragraph-style dropdown
-plus Bold / Italic toolbar above it, and three buttons below it. To confirm everything works:
+You should see an editor box pre-filled with "Hello from Praxo Editor.", a full toolbar above it
+(paragraph-style dropdown; Bold/Italic/Underline/Strikethrough; alignment; Link, Blockquote, Code
+block, Bulleted/Numbered list; Insert HTML, Horizontal line, Table, Media, Change case; a Source
+toggle), and three buttons below it. To confirm everything works:
 
-- Select some text and click **B** or **I** — the text should bold/italicize, and the button should
-  highlight while the selection has that formatting active.
+- Select some text and click **B**, **I**, **U**, or **S** — the text should format accordingly,
+  and the button should highlight while the selection has that formatting active.
 - Select some text and choose a heading level (or **Paragraph**) from the dropdown — the block
   should switch to that tag, and the dropdown should reflect the current block's format as you move
   the cursor around.
+- Select some text, click the alignment buttons, **Link** (enter a URL in the popover), or toggle
+  **Blockquote**/**Code block**/the list buttons — each should apply and toggle off again.
+- Click **Insert HTML**, **Horizontal line**, **Table**, or **Media** — each inserts its content at
+  the caret (HTML/media as editable widgets with edit/remove controls, a table/`<hr>` as plain
+  markup). For **Media**, paste a YouTube/Vimeo/direct-video-file URL into the popover.
+- Select some text and click **Change case** — pick UPPERCASE / lowercase / Title Case / Sentence
+  case from the dropdown; formatting inside the selection (e.g. bold) should survive the transform.
+- Click **Source** — the editor swaps for a raw-HTML `<textarea>`; edit it and toggle back to see
+  the change reflected.
 - Click **Run "sayHello" command** — `sayHello command executed` appears in the log below.
 - Click **Log getData()** — the editor's current HTML is logged, reflecting any formatting applied.
 - Click **Destroy editor** — logs `editor destroyed`; the toolbar and typing stop having any effect
