@@ -93,6 +93,7 @@
       #toolbar button[data-command='hr'] svg,
       #toolbar button[data-command='table'] svg,
       #toolbar button[data-command='media'] svg,
+      #toolbar button[data-command='caseChange'] svg,
       #source-toggle svg {
         width: 1rem;
         height: 1rem;
@@ -344,6 +345,42 @@
       #media-insert-btn:hover {
         background: #228545;
         border-color: #228545;
+      }
+      /* Case-change panel: a small dropdown menu (not a form like the panels
+         above) listing the available text transforms for the current
+         selection. Same popover positioning pattern as #link-panel/
+         #table-panel. */
+      #case-panel {
+        position: fixed;
+        z-index: 20;
+        width: 160px;
+        background: #fff;
+        border: 1px solid #c4c4c4;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+        padding: 0.3rem;
+        font-size: 0.85rem;
+      }
+      #case-panel[hidden] {
+        display: none;
+      }
+      .case-panel-option {
+        display: block;
+        width: 100%;
+        height: auto;
+        margin: 0;
+        padding: 0.4rem 0.6rem;
+        border: none;
+        border-radius: 3px;
+        background: transparent;
+        color: #1a1a1a;
+        font-size: 0.85rem;
+        font-family: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+      .case-panel-option:hover {
+        background: #e9e9e9;
       }
       /* HTML embed widget: an inline, CKEditor-style block dropped directly
          into the content at the caret (not a floating popover) — see
@@ -681,6 +718,19 @@
             <path d="M9 8.5 14 12 9 15.5z" fill="currentColor" stroke="none" />
           </svg>
         </button>
+        <button type="button" data-command="caseChange" title="Change case">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <text
+              x="1"
+              y="17"
+              font-size="13"
+              font-family="Arial, sans-serif"
+              font-weight="700"
+              fill="currentColor"
+              stroke="none"
+            >Aa</text>
+          </svg>
+        </button>
         <span class="toolbar-divider"></span>
         <button type="button" id="source-toggle" title="Source">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -751,6 +801,13 @@
         <input type="url" id="media-url-input" placeholder="https://www.youtube.com/watch?v=..." />
         <button type="button" id="media-insert-btn">Insert</button>
       </div>
+    </div>
+
+    <div id="case-panel" hidden>
+      <button type="button" class="case-panel-option" data-case="upper">UPPERCASE</button>
+      <button type="button" class="case-panel-option" data-case="lower">lowercase</button>
+      <button type="button" class="case-panel-option" data-case="title">Title Case</button>
+      <button type="button" class="case-panel-option" data-case="sentence">Sentence case</button>
     </div>
 
     <button id="run-command">Run "sayHello" command</button>

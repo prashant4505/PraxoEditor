@@ -74,6 +74,10 @@ for (const button of toolbarButtons) {
       openMediaPanel();
       return;
     }
+    if (button.dataset.command === 'caseChange') {
+      openCasePanel();
+      return;
+    }
     editor.execute(button.dataset.command);
     updateToolbarState();
   });
@@ -172,6 +176,7 @@ function openLinkPanel() {
   cancelHtmlEmbed();
   closeTablePanel();
   closeMediaPanel();
+  closeCasePanel();
   const selection = document.getSelection();
   const hadEditorSelection =
     selection && selection.rangeCount > 0 && editorEl.contains(selection.getRangeAt(0).commonAncestorContainer);
@@ -316,6 +321,7 @@ function openHtmlEmbed() {
   cancelHtmlEmbed();
   closeTablePanel();
   closeMediaPanel();
+  closeCasePanel();
 
   const selection = document.getSelection();
   const hadEditorSelection =
@@ -399,6 +405,7 @@ function openTablePanel() {
   closeLinkPanel();
   cancelHtmlEmbed();
   closeMediaPanel();
+  closeCasePanel();
 
   const selection = document.getSelection();
   const hadEditorSelection =
@@ -490,6 +497,7 @@ function openMediaPanel() {
   closeLinkPanel();
   cancelHtmlEmbed();
   closeTablePanel();
+  closeCasePanel();
 
   const selection = document.getSelection();
   const hadEditorSelection =
@@ -608,6 +616,69 @@ document.addEventListener('mousedown', (event) => {
   }
 });
 
+// Case-change panel: a dropdown menu (rather than a form) listing text
+// transforms — UPPERCASE, lowercase, Title Case, Sentence case — applied to
+// the current selection via the `caseChange` command (formatting-plugin.js).
+// Same open/close/mutual-exclusion/save-selection pattern as the other
+// panels; unlike them there's no input to focus, just menu options.
+const casePanel = document.getElementById('case-panel');
+const caseOptionButtons = document.querySelectorAll('.case-panel-option');
+const caseButton = document.querySelector('#toolbar button[data-command="caseChange"]');
+
+let caseSavedRange = null;
+
+function closeCasePanel() {
+  casePanel.hidden = true;
+  caseSavedRange = null;
+}
+
+function openCasePanel() {
+  closeLinkPanel();
+  cancelHtmlEmbed();
+  closeTablePanel();
+  closeMediaPanel();
+
+  const selection = document.getSelection();
+  const hasEditorSelection =
+    selection &&
+    selection.rangeCount > 0 &&
+    !selection.isCollapsed &&
+    editorEl.contains(selection.getRangeAt(0).commonAncestorContainer);
+  if (!hasEditorSelection) return; // Nothing selected — no text to transform.
+  caseSavedRange = selection.getRangeAt(0).cloneRange();
+
+  const anchorRect = caseButton.getBoundingClientRect();
+  casePanel.hidden = false;
+  casePanel.style.top = `${anchorRect.bottom + 6}px`;
+  casePanel.style.left = `${anchorRect.left}px`;
+}
+
+function restoreCaseSelection() {
+  if (!caseSavedRange) return;
+  const selection = document.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(caseSavedRange);
+}
+
+for (const optionButton of caseOptionButtons) {
+  optionButton.addEventListener('mousedown', (event) => event.preventDefault());
+  optionButton.addEventListener('click', () => {
+    restoreCaseSelection();
+    editor.execute('caseChange', { mode: optionButton.dataset.case });
+    closeCasePanel();
+    updateToolbarState();
+  });
+}
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !casePanel.hidden) closeCasePanel();
+});
+document.addEventListener('mousedown', (event) => {
+  if (!casePanel.hidden && !casePanel.contains(event.target) && event.target !== caseButton) {
+    closeCasePanel();
+  }
+});
+
 sourceToggle.addEventListener('click', () => {
   inSourceMode = !inSourceMode;
   sourceToggle.classList.toggle('active', inSourceMode);
@@ -619,6 +690,7 @@ sourceToggle.addEventListener('click', () => {
   cancelHtmlEmbed();
   closeTablePanel();
   closeMediaPanel();
+  closeCasePanel();
 
   if (inSourceMode) {
     sourceView.value = editor.getData();

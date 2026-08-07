@@ -169,6 +169,34 @@ export function sanitizeLinkUrl(rawUrl) {
   return '';
 }
 
+const WORD_CHAR_PATTERN = /[A-Za-z0-9À-ɏ]/;
+const SENTENCE_END_PATTERN = /[.!?]/;
+
+// Transforms one chunk of text for the `caseChange` command below. `state`
+// tracks word/sentence-boundary status *across* calls, since a selection's
+// text is split across multiple DOM text nodes (e.g. "the <b>quick</b> fox")
+// — without carrying it over, "title"/"sentence" mode would treat each
+// formatted run as its own sentence and over-capitalize.
+function transformCaseChunk(text, mode, state) {
+  if (mode === 'upper') return text.toUpperCase();
+  if (mode === 'lower') return text.toLowerCase();
+
+  let result = '';
+  for (const ch of text) {
+    if (WORD_CHAR_PATTERN.test(ch)) {
+      const atStart = mode === 'title' ? state.atWordStart : state.atSentenceStart;
+      result += atStart ? ch.toUpperCase() : ch.toLowerCase();
+      state.atWordStart = false;
+      state.atSentenceStart = false;
+    } else {
+      result += ch;
+      state.atWordStart = true;
+      if (mode === 'sentence' && SENTENCE_END_PATTERN.test(ch)) state.atSentenceStart = true;
+    }
+  }
+  return result;
+}
+
 export const formattingPlugin = {
   name: 'formattingPoc',
   init({ editor }) {
@@ -391,6 +419,50 @@ export const formattingPlugin = {
       },
       isEnabled: () => true,
     });
+    // Applies { mode } from the case-change panel (main.js) to the current
+    // selection. Rewrites each selected text node's `.data` in place (rather
+    // than replacing the selection's markup wholesale, like `insertHtml`
+    // does) so bold/links/etc. inside the selection survive untouched — only
+    // the characters change, not the structure.
+    editor.commands.register('caseChange', {
+      execute: (_context, payload) => {
+        const mode = payload?.mode;
+        if (!['upper', 'lower', 'title', 'sentence'].includes(mode)) return;
+        const selection = document.getSelection();
+        if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+        const range = selection.getRangeAt(0);
+
+        const containerEl =
+          range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+            ? range.commonAncestorContainer
+            : range.commonAncestorContainer.parentElement;
+        const root = containerEl?.closest('[contenteditable]');
+        if (!root) return;
+
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+          acceptNode: (node) => (range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP),
+        });
+        const textNodes = [];
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) textNodes.push(node);
+
+        const state = { atWordStart: true, atSentenceStart: true };
+        for (const node of textNodes) {
+          const start = node === range.startContainer ? range.startOffset : 0;
+          const end = node === range.endContainer ? range.endOffset : node.data.length;
+          if (start >= end) continue;
+          const before = node.data.slice(0, start);
+          const selected = node.data.slice(start, end);
+          const after = node.data.slice(end);
+          // Length-preserving 1:1 character mapping, so the still-live
+          // `range`/selection offsets stay valid without needing to be
+          // recomputed after each node.
+          node.data = before + transformCaseChunk(selected, mode, state) + after;
+        }
+
+        editor.events.emit('change', { source: 'user' });
+      },
+      isEnabled: () => true,
+    });
   },
   destroy({ editor }) {
     editor.commands.unregister('bold');
@@ -409,6 +481,7 @@ export const formattingPlugin = {
     editor.commands.unregister('link');
     editor.commands.unregister('unlink');
     editor.commands.unregister('insertHtml');
+    editor.commands.unregister('caseChange');
   },
 };
 
