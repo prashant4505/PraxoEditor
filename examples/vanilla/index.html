@@ -92,6 +92,7 @@
       #toolbar button[data-command='html'] svg,
       #toolbar button[data-command='hr'] svg,
       #toolbar button[data-command='table'] svg,
+      #toolbar button[data-command='media'] svg,
       #source-toggle svg {
         width: 1rem;
         height: 1rem;
@@ -284,6 +285,66 @@
         background: #228545;
         border-color: #228545;
       }
+      /* Media panel: same CKEditor-style popover pattern as #link-panel, for
+         pasting a YouTube/Vimeo/direct-video-file URL to embed at the caret. */
+      #media-panel {
+        position: fixed;
+        z-index: 20;
+        width: 280px;
+        background: #fff;
+        border: 1px solid #c4c4c4;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+        padding: 0.75rem;
+        font-size: 0.85rem;
+      }
+      #media-panel[hidden] {
+        display: none;
+      }
+      #media-panel-title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+      }
+      #media-url-label {
+        display: block;
+        font-size: 0.7rem;
+        color: #888;
+        margin: 0 0 0.25rem;
+      }
+      #media-panel-row {
+        display: flex;
+        gap: 0.35rem;
+        align-items: stretch;
+      }
+      #media-panel-row input {
+        flex: 1;
+        min-width: 0;
+        box-sizing: border-box;
+        padding: 0.35rem 0.5rem;
+        border: 1px solid #c4c4c4;
+        border-radius: 3px;
+        font-size: 0.85rem;
+        font-family: inherit;
+      }
+      #media-panel-row input:focus {
+        outline: none;
+        border-color: #4d90fe;
+        box-shadow: 0 0 0 2px rgba(77, 144, 254, 0.2);
+      }
+      #media-insert-btn {
+        width: auto;
+        height: auto;
+        padding: 0 0.7rem;
+        border-radius: 3px;
+        font-size: 0.8rem;
+        background: #279f4f;
+        border-color: #279f4f;
+        color: #fff;
+      }
+      #media-insert-btn:hover {
+        background: #228545;
+        border-color: #228545;
+      }
       /* HTML embed widget: an inline, CKEditor-style block dropped directly
          into the content at the caret (not a floating popover) — see
          images/insert-html.png for the edit state. `contenteditable="false"`
@@ -401,6 +462,56 @@
       }
       .praxo-html-embed-remove-btn:hover {
         background: #f6d7d7;
+      }
+      /* Media embed widget: a block-level, non-editable container for an
+         embedded video (iframe for YouTube/Vimeo/etc, <video> for direct
+         file links), inserted via the same `insertHtml` command as the
+         table/hr buttons. Uses the classic padding-top aspect-ratio hack so
+         the iframe/video scales responsively without a fixed pixel height. */
+      .praxo-media-embed {
+        position: relative;
+        margin: 0.75rem 0;
+      }
+      .praxo-media-embed-frame {
+        position: relative;
+        width: 100%;
+        padding-top: 56.25%; /* 16:9 */
+        background: #000;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .praxo-media-embed-frame iframe,
+      .praxo-media-embed-frame video {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+      .praxo-media-embed-remove-btn {
+        position: absolute;
+        top: 0.4rem;
+        right: 0.4rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.6rem;
+        height: 1.6rem;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        color: #b00020;
+        cursor: pointer;
+      }
+      .praxo-media-embed-remove-btn:hover {
+        background: #fbe9e9;
+      }
+      .praxo-media-embed-remove-btn svg {
+        width: 1rem;
+        height: 1rem;
+        fill: none;
       }
       #source-view {
         display: none;
@@ -563,6 +674,13 @@
             <line x1="15" y1="4" x2="15" y2="20" stroke="currentColor" stroke-width="1.4" />
           </svg>
         </button>
+        <button type="button" data-command="media" title="Insert media">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="14" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6" />
+            <path d="M17 9.5 21 7v10l-4-2.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+            <path d="M9 8.5 14 12 9 15.5z" fill="currentColor" stroke="none" />
+          </svg>
+        </button>
         <span class="toolbar-divider"></span>
         <button type="button" id="source-toggle" title="Source">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -624,6 +742,15 @@
         </label>
       </div>
       <button type="button" id="table-insert-btn">Insert</button>
+    </div>
+
+    <div id="media-panel" hidden>
+      <div id="media-panel-title">Insert media</div>
+      <label id="media-url-label" for="media-url-input">Video URL (YouTube, Vimeo, MP4...)</label>
+      <div id="media-panel-row">
+        <input type="url" id="media-url-input" placeholder="https://www.youtube.com/watch?v=..." />
+        <button type="button" id="media-insert-btn">Insert</button>
+      </div>
     </div>
 
     <button id="run-command">Run "sayHello" command</button>

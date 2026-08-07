@@ -70,6 +70,10 @@ for (const button of toolbarButtons) {
       openTablePanel();
       return;
     }
+    if (button.dataset.command === 'media') {
+      openMediaPanel();
+      return;
+    }
     editor.execute(button.dataset.command);
     updateToolbarState();
   });
@@ -167,6 +171,7 @@ function closeLinkPanel() {
 function openLinkPanel() {
   cancelHtmlEmbed();
   closeTablePanel();
+  closeMediaPanel();
   const selection = document.getSelection();
   const hadEditorSelection =
     selection && selection.rangeCount > 0 && editorEl.contains(selection.getRangeAt(0).commonAncestorContainer);
@@ -310,6 +315,7 @@ function openHtmlEmbed() {
   closeLinkPanel();
   cancelHtmlEmbed();
   closeTablePanel();
+  closeMediaPanel();
 
   const selection = document.getSelection();
   const hadEditorSelection =
@@ -392,6 +398,7 @@ function closeTablePanel() {
 function openTablePanel() {
   closeLinkPanel();
   cancelHtmlEmbed();
+  closeMediaPanel();
 
   const selection = document.getSelection();
   const hadEditorSelection =
@@ -456,6 +463,151 @@ document.addEventListener('mousedown', (event) => {
   }
 });
 
+// Media panel: same popover pattern as the link/table panels, for pasting a
+// YouTube/Vimeo/direct-video-file URL to embed at the caret. Recognized
+// providers get rewritten to their dedicated embed URL (e.g. a
+// youtube.com/watch?v=... link becomes youtube.com/embed/...) since most
+// video sites' regular watch-page URLs refuse to load inside an <iframe>;
+// anything else is embedded as a generic iframe pointed at the URL as-is.
+// Built on `insertHtml` like table/hr, wrapped in a `contenteditable="false"`
+// div (same rationale as the HTML-embed widget) so the player itself is
+// never mistaken for editable text.
+const mediaPanel = document.getElementById('media-panel');
+const mediaUrlInput = document.getElementById('media-url-input');
+const mediaInsertBtn = document.getElementById('media-insert-btn');
+const mediaButton = document.querySelector('#toolbar button[data-command="media"]');
+
+let mediaSavedRange = null;
+let mediaEmbedSeq = 0;
+
+function closeMediaPanel() {
+  mediaPanel.hidden = true;
+  mediaSavedRange = null;
+  mediaUrlInput.value = '';
+}
+
+function openMediaPanel() {
+  closeLinkPanel();
+  cancelHtmlEmbed();
+  closeTablePanel();
+
+  const selection = document.getSelection();
+  const hadEditorSelection =
+    selection && selection.rangeCount > 0 && editorEl.contains(selection.getRangeAt(0).commonAncestorContainer);
+  let range = hadEditorSelection ? selection.getRangeAt(0) : null;
+  if (!range) {
+    // No active selection inside the editor (e.g. button clicked without
+    // having typed yet) — place the caret at the end of the content.
+    editorEl.focus();
+    range = document.createRange();
+    range.selectNodeContents(editorEl);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+  mediaSavedRange = range.cloneRange();
+
+  const anchorRect = mediaButton.getBoundingClientRect();
+  mediaPanel.hidden = false;
+  mediaPanel.style.top = `${anchorRect.bottom + 6}px`;
+  mediaPanel.style.left = `${anchorRect.left}px`;
+  mediaUrlInput.focus();
+}
+
+function restoreMediaSelection() {
+  if (!mediaSavedRange) return;
+  const selection = document.getSelection();
+  selection.removeAllRanges();
+  selection.addRange(mediaSavedRange);
+}
+
+function escapeHtmlAttr(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Rewrites a pasted URL to its dedicated embeddable form when it matches a
+// known provider. Returns null for anything that doesn't even sanitize to a
+// safe URL (see `sanitizeLinkUrl`).
+function parseMediaEmbedUrl(rawUrl) {
+  const url = sanitizeLinkUrl(rawUrl);
+  if (!url) return null;
+
+  let parsed;
+  try {
+    parsed = new URL(url, window.location.href);
+  } catch {
+    return null;
+  }
+  const host = parsed.hostname.replace(/^www\./i, '').toLowerCase();
+
+  if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'youtube-nocookie.com') {
+    const pathMatch = parsed.pathname.match(/^\/(?:embed|shorts)\/([\w-]+)/);
+    const videoId = parsed.searchParams.get('v') || pathMatch?.[1];
+    return videoId ? { type: 'iframe', src: `https://www.youtube.com/embed/${videoId}` } : null;
+  }
+  if (host === 'youtu.be') {
+    const videoId = parsed.pathname.slice(1).split('/')[0];
+    return videoId ? { type: 'iframe', src: `https://www.youtube.com/embed/${videoId}` } : null;
+  }
+  if (host === 'vimeo.com') {
+    const videoId = parsed.pathname.match(/^\/(\d+)/)?.[1];
+    return videoId ? { type: 'iframe', src: `https://player.vimeo.com/video/${videoId}` } : null;
+  }
+  if (host === 'dailymotion.com') {
+    const videoId = parsed.pathname.match(/^\/video\/(\w+)/)?.[1];
+    return videoId ? { type: 'iframe', src: `https://www.dailymotion.com/embed/video/${videoId}` } : null;
+  }
+  if (/\.(mp4|webm|ogg)$/i.test(parsed.pathname)) {
+    return { type: 'video', src: url };
+  }
+  // Unrecognized provider: embed the URL directly — works for sites that
+  // publish a dedicated /embed/-style URL, or anything already framable.
+  return { type: 'iframe', src: url };
+}
+
+function buildMediaEmbedHtml(id, media) {
+  const src = escapeHtmlAttr(media.src);
+  const inner =
+    media.type === 'video'
+      ? `<video class="praxo-media-embed-video" src="${src}" controls></video>`
+      : `<iframe class="praxo-media-embed-iframe" src="${src}" title="Embedded media" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
+  return `<div class="praxo-media-embed" id="${id}" contenteditable="false">
+      <div class="praxo-media-embed-frame">${inner}</div>
+      <button type="button" class="praxo-media-embed-remove-btn" title="Remove media">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18 M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
+      </button>
+    </div>`;
+}
+
+mediaInsertBtn.addEventListener('click', () => {
+  const media = parseMediaEmbedUrl(mediaUrlInput.value);
+  if (!media) {
+    mediaUrlInput.focus();
+    return;
+  }
+  restoreMediaSelection();
+  const id = `media-embed-${++mediaEmbedSeq}`;
+  editor.execute('insertHtml', { html: buildMediaEmbedHtml(id, media) });
+
+  const widget = document.getElementById(id);
+  widget?.querySelector('.praxo-media-embed-remove-btn').addEventListener('click', () => {
+    widget.remove();
+    editor.events.emit('change', { source: 'user' });
+  });
+
+  closeMediaPanel();
+  updateToolbarState();
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !mediaPanel.hidden) closeMediaPanel();
+});
+document.addEventListener('mousedown', (event) => {
+  if (!mediaPanel.hidden && !mediaPanel.contains(event.target) && event.target !== mediaButton) {
+    closeMediaPanel();
+  }
+});
+
 sourceToggle.addEventListener('click', () => {
   inSourceMode = !inSourceMode;
   sourceToggle.classList.toggle('active', inSourceMode);
@@ -466,6 +618,7 @@ sourceToggle.addEventListener('click', () => {
   closeLinkPanel();
   cancelHtmlEmbed();
   closeTablePanel();
+  closeMediaPanel();
 
   if (inSourceMode) {
     sourceView.value = editor.getData();
